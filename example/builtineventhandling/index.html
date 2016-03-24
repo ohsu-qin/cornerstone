@@ -36,14 +36,15 @@
 </div>
 </body>
 
-<!-- cornerstone depends on eventEmitter, so it must be loaded first-->
-<script src="../../bower_components/eventEmitter/eventEmitter.js"></script>
+<!-- load the q and eventEmitter libraries first-->
+<script src="../q.min.js"></script>
+<script src="../eventEmitter.min.js"></script>
 
 <!-- include the cornerstone library -->
 <script src="../../dist/cornerstone.js"></script>
 
 <!-- include special code for these examples which provides images -->
-<script src="../exampleImageIdLoader.js"></script>
+<script src="../exampleImageIdLoaderQ.js"></script>
 
 <script>
     (function() {
