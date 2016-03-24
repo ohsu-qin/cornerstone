@@ -66,7 +66,7 @@
             sizeInBytes: width * height * 2
         };
 
-        var deferred = q.defer();
+        var deferred = Q.defer();
         deferred.resolve(image);
         return deferred.promise;
     }
