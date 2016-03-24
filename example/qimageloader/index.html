@@ -1,0 +1,115 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <!-- twitter bootstrap CSS stylesheet - included to make things pretty, not needed or used by cornerstone -->
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7"
+          crossorigin="anonymous">
+    <!-- cornerstone css - provides some useful css classes -->
+    <link href="../../dist/cornerstone.css" rel="stylesheet">
+
+</head>
+<body>
+<div class="container">
+
+    <h1>
+        imageloader/index.html
+    </h1>
+    This example is a variation of the imageloader example that uses the
+    <a href="http://documentup.com/kriskowal/q/">Q</a>
+    <a href="http://promises-aplus.github.io/promises-spec/">Promises/A+</a>
+    library rather than
+    <a href="https://api.jquery.com/jquery.deferred/">jQuery.Deferred</a>
+    to implement a custom image loader.
+    <br>
+    <br>
+
+    <div id="dicomImage" style="width:512px;height:512px;"
+         class="cornerstone-enabled-image"
+         oncontextmenu="return false"
+         unselectable='on'
+         onselectstart='return false;'
+         onmousedown='return false;'>
+    </div>
+
+</div>
+</body>
+
+<!-- load the dependencies first-->
+<script src="../jquery.min.js"></script>
+<script src="./q.js"></script>
+
+<!-- include the cornerstone library -->
+<script src="../../dist/cornerstone.js"></script>
+
+<script>
+    $(document).ready(function() {
+
+        // Loads an image given an imageId
+        function loadImage(imageId) {
+            var width = 256;
+            var height = 256;
+
+            var numPixels = width * height;
+            var pixelData = new Uint16Array(numPixels);
+            var index = 0;
+            var rnd = Math.round(Math.random() * 255);
+            for (var y = 0; y < height; y++) {
+                for (var x = 0; x < width; x++) {
+                    pixelData[index] = (x + rnd) % 256;
+                    index++;
+                }
+            }
+
+            function getPixelData()
+            {
+                return pixelData;
+            }
+
+            var image = {
+                imageId: imageId,
+                minPixelValue: 0,
+                maxPixelValue: 255,
+                slope: 1.0,
+                intercept: 0,
+                windowCenter: 127,
+                windowWidth: 256,
+                render: cornerstone.renderGrayscaleImage,
+                getPixelData: getPixelData,
+                rows: height,
+                columns: width,
+                height: height,
+                width: width,
+                color: false,
+                columnPixelSpacing: 1.0,
+                rowPixelSpacing: 1.0,
+                invert: false,
+                sizeInBytes: width * height * 2
+            };
+
+            // Create a deferred object, resolve it with the image object
+            // we just created and return the Q deferred promise to
+            // cornerstone. Cornerstone will get the image object by calling
+            // then() on the deferred promise.
+            var deferred = Q.defer();
+            deferred.resolve(image);
+            return deferred.promise;
+        }
+
+        cornerstone.registerImageLoader('myImageLoader', loadImage);
+
+        // image enable the element
+        var element = document.getElementById('dicomImage');
+        cornerstone.enable(element);
+
+        // load the image and display it
+        var imageId = 'myImageLoader://1';
+        cornerstone.loadImage(imageId).done(function(image) {
+            cornerstone.displayImage(element, image);
+        });
+
+    });
+
+</script>
+</html>
