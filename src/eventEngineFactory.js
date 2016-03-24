@@ -4,7 +4,7 @@
     
     var createEventEngine;
 
-    if(true || typeof $ === 'undefined') {
+    if(typeof $ === 'undefined') {
         // Delegate to the eventEmitter module.
         createEventEngine = function(element) {
             var ee = new EventEmitter();
