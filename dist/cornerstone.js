@@ -1,9 +1,15 @@
-/*! cornerstone - v0.9.0 - 2016-02-03 | (c) 2014 Chris Hafey | https://github.com/chafey/cornerstone */
-if(typeof cornerstone === 'undefined'){
-    cornerstone = {
+/*! cornerstone - v0.9.0 - 2016-03-24 | (c) 2014 Chris Hafey | https://github.com/chafey/cornerstone */
+// Create a temporary variable to hold the cornerstone
+// module. If cornerstone is already in the global
+// namespace, then modify that object. Otherwise,
+// make a new object.
+if(typeof window.cornerstone === 'undefined') {
+    var cornerstone = {
         internal : {},
         rendering: {}
     };
+} else {
+    var cornerstone = window.cornerstone;
 }
 
 (function (cornerstone) {
@@ -25,7 +31,7 @@ if(typeof cornerstone === 'undefined'){
                 var eventData = {
                     element : element
                 };
-                $(element).trigger("CornerstoneElementDisabled", eventData);
+                enabledElements[i].trigger("CornerstoneElementDisabled", eventData);
 
                 // remove the child dom elements that we created (e.g.canvas)
                 enabledElements[i].element.removeChild(enabledElements[i].canvas);
@@ -44,7 +50,7 @@ if(typeof cornerstone === 'undefined'){
 /**
  * This module is responsible for enabling an element to display images with cornerstone
  */
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -96,19 +102,19 @@ if(typeof cornerstone === 'undefined'){
             frameRate : frameRate
         };
 
-        $(enabledElement.element).trigger("CornerstoneNewImage", newImageEventData);
+        enabledElement.trigger("CornerstoneNewImage", newImageEventData);
 
         cornerstone.updateImage(element);
     }
 
     // module/private exports
     cornerstone.displayImage = displayImage;
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module is responsible for immediately drawing an enabled element
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -130,12 +136,12 @@ if(typeof cornerstone === 'undefined'){
     // Module exports
     cornerstone.draw = draw;
 
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module is responsible for drawing invalidated enabled elements
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -155,7 +161,7 @@ if(typeof cornerstone === 'undefined'){
 
     // Module exports
     cornerstone.drawInvalidated = drawInvalidated;
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module is responsible for enabling an element to display images with cornerstone
  */
@@ -165,18 +171,25 @@ if(typeof cornerstone === 'undefined'){
 
     function enable(element) {
         if(element === undefined) {
-            throw "enable: parameter element cannot be undefined";
+            throw new Error("enable: parameter element cannot be undefined");
         }
 
         var canvas = document.createElement('canvas');
         element.appendChild(canvas);
+        
+        // Make a new event engine, e.g. an EventEmitter or
+        // jQuery $(element).
+        var ee = cornerstone.createEventEngine(element);
 
         var el = {
             element: element,
             canvas: canvas,
             image : undefined, // will be set once image is loaded
             invalid: false, // true if image needs to be drawn, false if not
-            data : {}
+            data : {},
+            // delegate to the event engine
+            on: function() { return ee.on.apply(ee, arguments); },
+            trigger: function() { return ee.trigger.apply(ee, arguments); }
         };
         cornerstone.addEnabledElement(el);
 
@@ -258,6 +271,84 @@ if(typeof cornerstone === 'undefined'){
     cornerstone.getEnabledElementsByImageId = getEnabledElementsByImageId;
     cornerstone.getEnabledElements = getEnabledElements;
 }(cornerstone));
+(function (cornerstone) {
+
+    "use strict";
+    
+    var createEventEngine;
+    
+    // The built-in EventEmitter adapter.
+    var builtinFactory = function(element) {
+        var ee = new EventEmitter();
+        // Return an EventEmitter adapter that aliases two
+        // EventEmitter functions.
+        return {
+            on: function(evt, fn) {
+                // An EventEmitter handler function has a single data
+                // argument, e.g. handler(data). By contrast, jQuery
+                // has two arguments (event, data) The jQuery event
+                // argument is seldom used in practice. If there is
+                // more than one handler argument, then complain.
+                if (fn.length > 1) {
+                    throw new Error("The built-in non-jQuery Cornerstone" +
+                                    " event handler function must accept" +
+                                    " at most a single data argument.");
+                }
+                return ee.on.apply(ee, arguments); },
+            trigger: function() { return ee.emit.apply(ee, arguments); }
+        };
+    };
+    
+    // The jQuery adapter.
+    var jQueryFactory = function(element) {
+        return $(element);
+    };
+    
+    Object.defineProperties(cornerstone, {
+        // Creates the event engine factory on demand, if necessary.
+        eventEngineFactory: {
+            get: function() {
+                if(typeof this._eeFactory === 'undefined') {
+                    if(typeof $ === 'undefined') {
+                        this._eeFactory = builtinFactory;
+                    }
+                    else {
+                        this._eeFactory = jQueryFactory;
+                    }
+                }
+                return this._eeFactory;
+            },
+            set: function(fn) { this._eeFactory = fn; }
+        },
+        // Creates the cornerstone event engine on demand.
+        eventEngine: {
+            get: function() {
+                if(typeof this._eventEngine === 'undefined') {
+                    this._eventEngine = this.createEventEngine(this);
+                }
+                return this._eventEngine;
+            }
+        }
+    });
+
+    // Delegate event engine creation to the factory.
+    cornerstone.createEventEngine = function(element) {
+        var factory = cornerstone.eventEngineFactory;
+        return factory(element);
+    };
+
+    // Delegate the Cornerstone event emitter and handler to the
+    // event engine.
+    cornerstone.on = function() {
+        var ee = cornerstone.eventEngine;
+        return cornerstone.eventEngine.on.apply(ee, arguments);
+    };
+    cornerstone.trigger = function() {
+        var ee = cornerstone.eventEngine;
+        return cornerstone.eventEngine.trigger.apply(ee, arguments);
+    };
+}(cornerstone));
+
 /**
  * This module will fit an image to fit inside the canvas displaying it such that all pixels
  * in the image are viewable
@@ -310,7 +401,7 @@ if(typeof cornerstone === 'undefined'){
  * This file is responsible for returning the default viewport for an image
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -329,12 +420,12 @@ if(typeof cornerstone === 'undefined'){
 
     // Module exports
     cornerstone.getDefaultViewportForImage = getDefaultViewportForImage;
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module is responsible for returning the currently displayed image for an element
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -351,7 +442,7 @@ if(typeof cornerstone === 'undefined'){
 
     // Module exports
     cornerstone.getImage = getImage;
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module returns a subset of the stored pixels of an image
  */
@@ -516,11 +607,11 @@ if(typeof cornerstone === 'undefined'){
             delete imageCache[lastCachedImage.imageId];
             lastCachedImage.imagePromise.reject();
             cachedImages.pop();
-            $(cornerstone).trigger('CornerstoneImageCachePromiseRemoved', {imageId: lastCachedImage.imageId});
+            cornerstone.trigger('CornerstoneImageCachePromiseRemoved', {imageId: lastCachedImage.imageId});
         }
 
         var cacheInfo = cornerstone.imageCache.getCacheInfo();
-        $(cornerstone).trigger('CornerstoneImageCacheFull', cacheInfo);
+        cornerstone.trigger('CornerstoneImageCacheFull', cacheInfo);
     }
 
     function putImagePromise(imageId, imagePromise) {
@@ -677,7 +768,7 @@ if(typeof cornerstone === 'undefined'){
  * This module deals with ImageLoaders, loading images and caching images
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -704,7 +795,7 @@ if(typeof cornerstone === 'undefined'){
         // broadcast an image loaded event once the image is loaded
         // This is based on the idea here: http://stackoverflow.com/questions/3279809/global-custom-events-in-jquery
         imagePromise.then(function(image) {
-            $(cornerstone).trigger('CornerstoneImageLoaded', {image: image});
+            cornerstone.trigger('CornerstoneImageLoaded', {image: image});
         });
 
         return imagePromise;
@@ -774,7 +865,7 @@ if(typeof cornerstone === 'undefined'){
     cornerstone.registerImageLoader = registerImageLoader;
     cornerstone.registerUnknownImageLoader = registerUnknownImageLoader;
 
-}($, cornerstone));
+}(cornerstone));
 
 (function (cornerstone) {
 
@@ -841,7 +932,7 @@ if(typeof cornerstone === 'undefined'){
  * This module is responsible for drawing an image to an enabled elements canvas element
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -871,7 +962,7 @@ if(typeof cornerstone === 'undefined'){
             renderTimeInMs : diff
         };
 
-        $(enabledElement.element).trigger("CornerstoneImageRendered", eventData);
+        enabledElement.trigger("CornerstoneImageRendered", eventData);
         enabledElement.invalid = false;
     }
 
@@ -879,7 +970,7 @@ if(typeof cornerstone === 'undefined'){
     cornerstone.internal.drawImage = drawImage;
     cornerstone.drawImage = drawImage;
 
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module generates a lut for an image
  */
@@ -1070,7 +1161,7 @@ if(typeof cornerstone === 'undefined'){
  * This module is responsible for drawing an image to an enabled elements canvas element
  */
 
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -1079,7 +1170,7 @@ if(typeof cornerstone === 'undefined'){
     cornerstone.storedPixelDataToCanvasImageData = cornerstone.internal.storedPixelDataToCanvasImageData;
     cornerstone.storedColorPixelDataToCanvasImageData = cornerstone.internal.storedColorPixelDataToCanvasImageData;
 
-}($, cornerstone));
+}(cornerstone));
 /**
  * This module generates a Modality LUT
  */
@@ -1403,7 +1494,7 @@ if(typeof cornerstone === 'undefined'){
         var eventData = {
             element: element
         };
-        $(enabledElement.element).trigger("CornerstoneInvalidated", eventData);
+        enabledElement.trigger("CornerstoneInvalidated", eventData);
     }
 
     // module exports
@@ -2076,4 +2167,44 @@ if(typeof cornerstone === 'undefined'){
     // module exports
     cornerstone.updateImage = updateImage;
 
+}(cornerstone));
+/**
+ * This footer function registers Cornerstone as a module.
+ *
+ * Although AMD is customarily anonymous, Cornerstone registers as
+ * a named module to support non-AMD environments, which could
+ * generate an error when an anonymous define() is called outside
+ * of a loader request.
+ *
+ * This file should be concatenated as the last function in the
+ * Cornerstone module for compatibility with all non-RequireJS
+ * AMD loaders. The concatenation order is accomplished by
+ * specifying the following grunt concat file spec:
+ *   src : [...,'!src/registerModule.js','src/registerModule.js'],
+ */
+(function (cornerstone) {
+
+    "use strict";
+
+    // Expose the class via either AMD, CommonJS or the global object.
+    // If a module loader is enabled, then export this cornerstone module.
+    // Otherwise, add this module to the global namespace.
+    if (typeof define == 'function' && define.amd) {
+        // AMD export.
+        define('cornerstone', [], function() {
+            return cornerstone;
+        });
+    }
+    else if(typeof module === 'object' && module.exports) {
+        // CommonJS export.
+        module.exports = cornerstone;
+    }
+    else if(typeof exports !== 'undefined') {
+        // NodeJS export.
+        exports.cornerstone = cornerstone;
+    }
+    else {
+        // Global export.
+        window.cornerstone = cornerstone;
+    }
 }(cornerstone));
