@@ -15,7 +15,7 @@
         var eventData = {
             element: element
         };
-        $(enabledElement.element).trigger("CornerstoneInvalidated", eventData);
+        enabledElement.trigger("CornerstoneInvalidated", eventData);
     }
 
     // module exports
