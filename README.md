@@ -211,9 +211,19 @@ matrix, slice thickness, transfer function/LUT, segmentation masks, etc.  And an
 various tools on top of the 3d viewport (rotate, zoom, segment, scroll, etc).  I do have a working 3D server that
 is integrated with cornerstone but am keeping the code closed for now (this may change in the future - TBD).
 
-_Why did you add jQuery as a dependency?_
+_Why did you remove jQuery as a dependency?_
 
-Primarily for its custom event handling.
+Cornerstone versions 0.9.0 and below used jQuery for its custom event handling.
+More recent versions of Cornerstone replace jQuery with the smaller footprint
+eventEmitter library by default. However, if jQuery is loaded before Cornerstone
+then Cornerstone recognizes and uses jQuery for event handling. For example,
+most of the examples continue to use jQuery.
+
+_How do I handle a Cornerstone event?_
+
+See the `builtineventhandling` example for a demonstration of handling events with the
+built-in eventEmitter library.
+See the `jqueryeventhandling` example for a demonstration of handling events with jQuery.
 
 _I would like to contribute code - how do I do this?_
 
