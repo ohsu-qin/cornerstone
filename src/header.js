@@ -2,11 +2,11 @@
 // module. If cornerstone is already in the global
 // namespace, then modify that object. Otherwise,
 // make a new object.
-if(typeof this.cornerstone === 'undefined') {
+if(typeof window.cornerstone === 'undefined') {
     var cornerstone = {
         internal : {},
         rendering: {}
     };
 } else {
-    var cornerstone = this.cornerstone;
+    var cornerstone = window.cornerstone;
 }

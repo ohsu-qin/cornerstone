@@ -35,6 +35,6 @@
     }
     else {
         // Global export.
-        this.cornerstone = cornerstone;
+        window.cornerstone = cornerstone;
     }
 }(cornerstone));
