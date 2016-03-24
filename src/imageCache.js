@@ -54,11 +54,11 @@
             delete imageCache[lastCachedImage.imageId];
             lastCachedImage.imagePromise.reject();
             cachedImages.pop();
-            $(cornerstone).trigger('CornerstoneImageCachePromiseRemoved', {imageId: lastCachedImage.imageId});
+            cornerstone.trigger('CornerstoneImageCachePromiseRemoved', {imageId: lastCachedImage.imageId});
         }
 
         var cacheInfo = cornerstone.imageCache.getCacheInfo();
-        $(cornerstone).trigger('CornerstoneImageCacheFull', cacheInfo);
+        cornerstone.trigger('CornerstoneImageCacheFull', cacheInfo);
     }
 
     function putImagePromise(imageId, imagePromise) {

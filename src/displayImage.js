@@ -1,7 +1,7 @@
 /**
  * This module is responsible for enabling an element to display images with cornerstone
  */
-(function ($, cornerstone) {
+(function (cornerstone) {
 
     "use strict";
 
@@ -53,11 +53,11 @@
             frameRate : frameRate
         };
 
-        $(enabledElement.element).trigger("CornerstoneNewImage", newImageEventData);
+        enabledElement.trigger("CornerstoneNewImage", newImageEventData);
 
         cornerstone.updateImage(element);
     }
 
     // module/private exports
     cornerstone.displayImage = displayImage;
-}($, cornerstone));
+}(cornerstone));

@@ -1,0 +1,80 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <!-- cornerstone css - provides some useful css classes -->
+    <link href="../../dist/cornerstone.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+
+    <h1>
+        builtineventhandling/index.html
+    </h1>
+    This is an example of the built-in non-jQuery event handling. Cornerstone fires the
+    'CornerstoneImageLoaded' event when the image load is completed.
+    <br>
+    <br>
+    This example simulates a two-second image file transfer. A 'CornerstoneImageLoaded'
+    event handler displays the Image load duration.
+    <br>
+    <br>
+
+    <br>
+    <br>
+    <div id="imageLoad">Image Loading.</div>
+    <div style="width:512px;height:512px;position:relative;color: white;"
+         class="cornerstone-enabled-image"
+         oncontextmenu="return false"
+         unselectable='on'
+         onselectstart='return false;'
+         onmousedown='return false;'>
+        <div id="dicomImage" oncontextmenu="return false"
+             style="width:512px;height:512px;top:0px;left:0px; position:absolute">
+        </div>
+    </div>
+
+</div>
+</body>
+
+<!-- cornerstone depends on eventEmitter, so it must be loaded first-->
+<script src="../../bower_components/eventEmitter/eventEmitter.js"></script>
+
+<!-- include the cornerstone library -->
+<script src="../../dist/cornerstone.js"></script>
+
+<!-- include special code for these examples which provides images -->
+<script src="../exampleImageIdLoader.js"></script>
+
+<script>
+    (function() {
+        // start the stopwatch
+        var start = Date.now();
+        // the interval is created below
+        var intervalId;
+        // load the image, but take a while to do so
+        loadElt = document.getElementById('imageLoad');
+        function tick() {
+            loadElt.innerHTML += '.';
+        };
+        // start the interval
+        intervalId = window.setInterval(tick, 200);
+        // Show the load duration.
+        function showDuration() {
+            var duration = Date.now() - start;
+            window.clearInterval(intervalId);
+            loadElt.innerHTML = 'Image loaded in ' + duration + ' milliseconds';
+        };
+        cornerstone.on('CornerstoneImageLoaded', showDuration);
+
+        // load the image and display it
+        var imgElt = document.getElementById('dicomImage');
+        cornerstone.enable(imgElt);
+        var imageId = 'example://1';
+        function display(image) { cornerstone.displayImage(imgElt, image) };
+        function load() { cornerstone.loadImage(imageId).done(display) };
+        window.setTimeout(load, 2000);
+    })();
+
+
+</script>
+</html>
