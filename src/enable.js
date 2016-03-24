@@ -7,18 +7,25 @@
 
     function enable(element) {
         if(element === undefined) {
-            throw "enable: parameter element cannot be undefined";
+            throw new Error("enable: parameter element cannot be undefined");
         }
 
         var canvas = document.createElement('canvas');
         element.appendChild(canvas);
+        
+        // Make a new event engine, e.g. an EventEmitter or
+        // jQuery $(element).
+        var ee = cornerstone.createEventEngine(element);
 
         var el = {
             element: element,
             canvas: canvas,
             image : undefined, // will be set once image is loaded
             invalid: false, // true if image needs to be drawn, false if not
-            data : {}
+            data : {},
+            // delegate to the event engine
+            on: function() { return ee.on.apply(ee, arguments); },
+            trigger: function() { return ee.trigger.apply(ee, arguments); }
         };
         cornerstone.addEnabledElement(el);
 
