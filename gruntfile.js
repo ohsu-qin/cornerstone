@@ -23,7 +23,7 @@ module.exports = function(grunt) {
         },
         concat: {
             build: {
-                src : ['src/header.js','src/**/*.js'],
+                src : ['src/header.js','src/**/*.js','!src/registerModule.js','src/registerModule.js'],
                 dest: 'build/built.js'
             },
             css: {
