@@ -1,4 +1,4 @@
-/*! cornerstone - v0.9.0 - 2016-03-24 | (c) 2014 Chris Hafey | https://github.com/chafey/cornerstone */
+/*! cornerstone - v0.9.0 - 2016-04-25 | (c) 2014 Chris Hafey | https://github.com/chafey/cornerstone */
 // Create a temporary variable to hold the cornerstone
 // module. If cornerstone is already in the global
 // namespace, then modify that object. Otherwise,
@@ -279,9 +279,12 @@ if(typeof window.cornerstone === 'undefined') {
     
     // The built-in EventEmitter adapter.
     var builtinFactory = function(element) {
+        // Import the EventEmitter module.
+        var EventEmitter = require('EventEmitter');
+        // Make a new EventEmitter.
         var ee = new EventEmitter();
-        // Return an EventEmitter adapter that aliases two
-        // EventEmitter functions.
+        // Return an EventEmitter adapter object {on, trigger} that
+        // aliases the EventEmitter functions *on* and *emit*, resp.
         return {
             on: function(evt, fn) {
                 // An EventEmitter handler function has a single data
@@ -295,6 +298,7 @@ if(typeof window.cornerstone === 'undefined') {
                                     " at most a single data argument.");
                 }
                 return ee.on.apply(ee, arguments); },
+            // trigger is a straight-up alias for EventEmitter emit.
             trigger: function() { return ee.emit.apply(ee, arguments); }
         };
     };
