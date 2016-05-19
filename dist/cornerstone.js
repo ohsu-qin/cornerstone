@@ -1,4 +1,4 @@
-/*! cornerstone - v0.9.0 - 2016-04-25 | (c) 2014 Chris Hafey | https://github.com/chafey/cornerstone */
+/*! cornerstone - v0.9.0 - 2016-05-19 | (c) 2014 Chris Hafey | https://github.com/chafey/cornerstone */
 // Create a temporary variable to hold the cornerstone
 // module. If cornerstone is already in the global
 // namespace, then modify that object. Otherwise,
@@ -499,10 +499,25 @@ if(typeof window.cornerstone === 'undefined') {
         var storedPixels = [];
         var index = 0;
         var pixelData = ee.image.getPixelData();
-        for(var row=0; row < height; row++) {
-            for(var column=0; column < width; column++) {
-                var spIndex = ((row + y) * ee.image.columns) + (column + x);
-                storedPixels[index++] = pixelData[spIndex];
+        // All valid pixelData implementations support the getPixelValue
+        // accessor below. However, the array check provides a slight
+        // optimization for native Javascript arrays.
+        var row, column, spIndex;
+        if (Array.isArray(pixelData)) {
+            for(row=0; row < height; row++) {
+                for(column=0; column < width; column++) {
+                    spIndex = ((row + y) * ee.image.columns) + (column + x);
+                    storedPixels[index++] = pixelData[spIndex];
+                }
+            }
+        }
+        else {
+            var getPixelValue = cornerstone.createStoredPixelAccessor(pixelData);
+            for(row=0; row < height; row++) {
+                for(column=0; column < width; column++) {
+                    spIndex = ((row + y) * ee.image.columns) + (column + x);
+                    storedPixels[index++] = getPixelValue(spIndex);
+                }
             }
         }
         return storedPixels;
@@ -1242,22 +1257,38 @@ if(typeof window.cornerstone === 'undefined') {
         var localCanvasImageDataData = canvasImageDataData;
         // NOTE: As of Nov 2014, most javascript engines have lower performance when indexing negative indexes.
         // We have a special code path for this case that improves performance.  Thanks to @jpambrun for this enhancement
-        if(minPixelValue < 0){
-            while(storedPixelDataIndex < numPixels) {
-                localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++] + (-minPixelValue)]; // red
-                localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++] + (-minPixelValue)]; // green
-                localCanvasImageDataData[canvasImageDataIndex] = localLut[storedPixelData[storedPixelDataIndex] + (-minPixelValue)]; // blue
-                storedPixelDataIndex+=2;
-                canvasImageDataIndex+=2;
+        var lutOffset = minPixelValue < 0 ? -minPixelValue : 0;
+        // All valid pixelData implementations support thet the getPixelValue accessor function below.
+        // However, the following array check provides a slight optimization for native Javascript arrays.
+        if (Array.isArray(pixelData)) {
+            if (lutOffset == 0) {
+                while(storedPixelDataIndex < numPixels) {
+                    localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++]]; // red
+                    localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++]]; // green
+                    localCanvasImageDataData[canvasImageDataIndex] = localLut[storedPixelData[storedPixelDataIndex]]; // blue
+                    storedPixelDataIndex+=2;
+                    canvasImageDataIndex+=2;
+                }
+            } else{
+                while(storedPixelDataIndex < numPixels) {
+                    localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++] + lutOffset]; // red
+                    localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++] + lutOffset]; // green
+                    localCanvasImageDataData[canvasImageDataIndex] = localLut[storedPixelData[storedPixelDataIndex] + lutOffset]; // blue
+                    storedPixelDataIndex+=2;
+                    canvasImageDataIndex+=2;
+                }
             }
-        }else{
-            while(storedPixelDataIndex < numPixels) {
-                localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++]]; // red
-                localCanvasImageDataData[canvasImageDataIndex++] = localLut[storedPixelData[storedPixelDataIndex++]]; // green
-                localCanvasImageDataData[canvasImageDataIndex] = localLut[storedPixelData[storedPixelDataIndex]]; // blue
-                storedPixelDataIndex+=2;
-                canvasImageDataIndex+=2;
-            }
+        } else {
+            // Convert the pixel values to to the canvas buffer values.
+            var getPixelValue = cornerstone.createStoredPixelAccessor(pixelData);
+            // Convert the pixel values to to the canvas buffer values.
+            for (var i=0; i<pixelData.length; i++) {
+                // Convert the RGB triplet, but skip the fourth pixel.
+                if (index % 4 < 3) {
+                    localCanvasImageDataData[index] = localLut[getPixelValue(i) + lutOffset];
+                }
+            };
+            pixelData.map(convert);
         }
     }
 
@@ -1292,24 +1323,38 @@ if(typeof window.cornerstone === 'undefined') {
     {
         var pixelData = image.getPixelData();
         var minPixelValue = image.minPixelValue;
-        var canvasImageDataIndex = 3;
-        var storedPixelDataIndex = 0;
-        var localNumPixels = pixelData.length;
         var localPixelData = pixelData;
         var localLut = lut;
         var localCanvasImageDataData = canvasImageDataData;
         // NOTE: As of Nov 2014, most javascript engines have lower performance when indexing negative indexes.
-        // We have a special code path for this case that improves performance.  Thanks to @jpambrun for this enhancement
-        if(minPixelValue < 0){
-            while(storedPixelDataIndex < localNumPixels) {
-                localCanvasImageDataData[canvasImageDataIndex] = localLut[localPixelData[storedPixelDataIndex++] + (-minPixelValue)]; // alpha
-                canvasImageDataIndex += 4;
+        // We have a special offset factor for this case that improves performance.
+        // Thanks to @jpambrun for this enhancement.
+        var lutOffset = minPixelValue < 0 ? -minPixelValue : 0;
+        // All valid pixelData implementations support the getPixelValue accessor function below.
+        // However, the following array check provides a slight optimization for native Javascript
+        // arrays.
+        if (Array.isArray(pixelData)) {
+            var canvasImageDataIndex = 3;
+            var storedPixelDataIndex = 0;
+            var localNumPixels = pixelData.length;
+            if (lutOffset == 0) {
+                while(storedPixelDataIndex < localNumPixels) {
+                    localCanvasImageDataData[canvasImageDataIndex] = localLut[localPixelData[storedPixelDataIndex++]]; // alpha
+                    canvasImageDataIndex += 4;
+                }
+            } else {
+                while(storedPixelDataIndex < localNumPixels) {
+                    localCanvasImageDataData[canvasImageDataIndex] = localLut[localPixelData[storedPixelDataIndex++] + lutOffset]; // alpha
+                    canvasImageDataIndex += 4;
+                }
             }
-        }else{
-            while(storedPixelDataIndex < localNumPixels) {
-                localCanvasImageDataData[canvasImageDataIndex] = localLut[localPixelData[storedPixelDataIndex++]]; // alpha
-                canvasImageDataIndex += 4;
-            }
+        }
+        else {
+            var getPixelValue = cornerstone.createStoredPixelAccessor(pixelData);
+            // Convert the pixel values to to the canvas buffer values.
+            for (var i=0; i < pixelData.length; i++) {
+                localCanvasImageDataData[3 + (i * 4)] = localLut[getPixelValue(i) + lutOffset];
+            };
         }
     }
 
@@ -2145,6 +2190,42 @@ if(typeof window.cornerstone === 'undefined') {
     // module/private exports
     cornerstone.setViewport = setViewport;
 
+}(cornerstone));
+
+/**
+ * This module returns a function which accesses stored pixel data by index.
+ */
+(function (cornerstone) {
+
+    "use strict";
+
+    // Returns the accessor function for the given pixelData object.
+    // The accessor for index i is determined as follows:
+    // * if pixelData is an array, then [i]
+    // * otherwise, if pixelData implements the *get* function, then get(i)
+    // * otherwise, throw an error.
+    //
+    // Example:
+    //
+    // var getPixelValue = createStoredPixelAccessor(pixelData);
+    // for (i=start; i < end; i++) {
+    //     pixelValue = getPixelValue(i);
+    //     ... 
+    // }
+    function createStoredPixelAccessor(pixelData) {
+        if (Array.isArray(pixelData)) {
+            return function (i) { return pixelData[i]; };
+        }
+        else if (typeof pixelData.get === "function" && pixelData.get.length === 1) {
+            return function (i) { return pixelData.get(i); };
+        }
+        else {
+            throw new Error("The pixel data is neither an array nor implements a get function");
+        }
+    }
+
+    // module exports
+    cornerstone.createStoredPixelAccessor = createStoredPixelAccessor;
 }(cornerstone));
 
 /**
