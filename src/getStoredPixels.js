@@ -25,10 +25,25 @@
         var storedPixels = [];
         var index = 0;
         var pixelData = ee.image.getPixelData();
-        for(var row=0; row < height; row++) {
-            for(var column=0; column < width; column++) {
-                var spIndex = ((row + y) * ee.image.columns) + (column + x);
-                storedPixels[index++] = pixelData[spIndex];
+        // All valid pixelData implementations support the getPixelValue
+        // accessor below. However, the array check provides a slight
+        // optimization for native Javascript arrays.
+        var row, column, spIndex;
+        if (Array.isArray(pixelData)) {
+            for(row=0; row < height; row++) {
+                for(column=0; column < width; column++) {
+                    spIndex = ((row + y) * ee.image.columns) + (column + x);
+                    storedPixels[index++] = pixelData[spIndex];
+                }
+            }
+        }
+        else {
+            var getPixelValue = cornerstone.createStoredPixelAccessor(pixelData);
+            for(row=0; row < height; row++) {
+                for(column=0; column < width; column++) {
+                    spIndex = ((row + y) * ee.image.columns) + (column + x);
+                    storedPixels[index++] = getPixelValue(spIndex);
+                }
             }
         }
         return storedPixels;
